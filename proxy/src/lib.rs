@@ -23,8 +23,6 @@ mod proxy {
         pub fn upgrade(&mut self, address: AccountId) {
             use ink_env::call::FromAccountId;
             self.backend = V1::from_account_id(address);
-
-            // migrate data somehow
         }
     }
 

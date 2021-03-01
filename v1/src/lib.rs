@@ -18,6 +18,16 @@ mod v1 {
         pub fn default() -> Self {
             Self { values: vec![] }
         }
+
+        #[ink(message)]
+        pub fn items(&self) -> u32 {
+            self.values.len() as u32
+        }
+
+        #[ink(message)]
+        pub fn nth(&self, idx: u32) -> i32 {
+            self.values[idx as usize]
+        }
     }
 
     impl upgradeability::Averager for V1 {
@@ -28,6 +38,8 @@ mod v1 {
 
         #[ink(message)]
         fn average(&self) -> i32 {
+            if self.values.is_empty() { return 0; }
+
             let mut s = 0;
 
             for x in &self.values {
