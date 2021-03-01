@@ -22,6 +22,8 @@ mod v2 {
 
         pub fn from_v1(address: AccountId) -> Self {
             use ink_env::call::FromAccountId;
+            use upgradeability::Averager;
+
             let previous = V1::from_account_id(address);
 
             let mut new = Self {
@@ -29,10 +31,20 @@ mod v2 {
             };
 
             for i in 0..previous.items() {
-                new.sorted_values.push(previous.nth(i));
+                new.insert(previous.nth(i));
             }
 
             new
+        }
+
+        #[ink(message)]
+        pub fn items(&self) -> u32 {
+            self.sorted_values.len() as u32
+        }
+
+        #[ink(message)]
+        pub fn nth(&self, idx: u32) -> i32 {
+            self.sorted_values[idx as usize]
         }
     }
 
