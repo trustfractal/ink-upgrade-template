@@ -4,7 +4,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod proxy {
-    use upgradeability::Flipper;
+    use upgradeability::Averager;
     use v1::V1;
 
     #[ink(storage)]
@@ -29,15 +29,15 @@ mod proxy {
     }
 
     // good candidate for auto generation
-    impl Flipper for Proxy {
+    impl Averager for Proxy {
         #[ink(message)]
-        fn get(&self) -> bool {
-            self.backend.get()
+        fn insert(&mut self, value: i32) {
+            self.backend.insert(value)
         }
 
         #[ink(message)]
-        fn flip(&mut self) {
-            self.backend.flip()
+        fn average(&self) -> i32 {
+            self.backend.average()
         }
     }
 }

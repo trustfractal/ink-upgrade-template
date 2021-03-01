@@ -5,8 +5,8 @@ use ink_lang as ink;
 #[ink::trait_definition]
 pub trait Averager {
     #[ink(message)]
-    fn get(&self) -> bool;
+    fn insert(&mut self, value: i32);
 
     #[ink(message)]
-    fn flip(&mut self);
+    fn average(&self) -> i32;
 }

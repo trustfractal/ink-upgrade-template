@@ -22,3 +22,9 @@ Can we access the storage things from the proxy contract?
 Can we set up a catchall selector in the proxy contract to add new calls?
 
 Can we detect that calls to the internal contract are coming from the proxy? investigate `ink_env` `caller`
+
+
+## Recommendations
+
+add circuit breaker logic anyway.
+
