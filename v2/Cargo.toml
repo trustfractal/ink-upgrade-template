@@ -15,7 +15,6 @@ ink_lang = { version = "3.0.0-rc3", default-features = false }
 scale = { package = "parity-scale-codec", version = "2.0.1", default-features = false, features = ["derive"] }
 scale-info = { version = "0.6.0", default-features = false, features = ["derive"], optional = true }
 
-upgradeability = { version = "0.1.0", path = "..", default-features = false, features = ["ink-as-dependency"] }
 v1 = { version = "0.1.0", path = "../v1", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]

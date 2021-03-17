@@ -37,13 +37,6 @@ mod v1 {
             self.values[idx as usize]
         }
 
-        #[ink(message)]
-        pub fn nested(&self) -> Result<AccountId> {
-            self.enforce_proxy_call()?;
-
-            Ok(self.proxy)
-        }
-
         fn enforce_proxy_call(&self) -> Result<()> {
             if Self::env().caller() != self.proxy {
                 Err(Error::NotCalledFromProxy)
@@ -51,25 +44,59 @@ mod v1 {
                 Ok(())
             }
         }
-    }
 
-    impl upgradeability::Averager for V1 {
         #[ink(message)]
-        fn insert(&mut self, value: i32) {
+        pub fn insert(&mut self, value: i32) {
             self.values.push(value);
         }
 
         #[ink(message)]
-        fn average(&self) -> i32 {
-            if self.values.is_empty() { return 0; }
-
-            let mut s = 0;
-
-            for x in &self.values {
-                s += x;
+        pub fn average(&self) -> i32 {
+            if self.values.is_empty() {
+                return 0;
             }
 
-            s / self.values.len() as i32
+            self.values.iter().sum::<i32>() / self.values.len() as i32
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::v1::V1;
+
+        #[test]
+        fn starts_out_empty() {
+            let contract = V1::default();
+
+            assert_eq!(contract.items(), 0);
+        }
+
+        #[test]
+        fn insert_registers_new_item() {
+            let mut contract = V1::default();
+
+            contract.insert(10);
+
+            assert_eq!(contract.items(), 1);
+            assert_eq!(contract.nth(0), 10);
+        }
+
+        #[test]
+        fn average_of_nothing_defaults_to_zero() {
+            let contract = V1::default();
+
+            assert_eq!(contract.average(), 0);
+        }
+
+        #[test]
+        fn average_is_middle_value_when_odd_items() {
+            let mut contract = V1::default();
+
+            contract.insert(10);
+            contract.insert(50);
+            contract.insert(20);
+
+            assert_eq!(contract.average(), (10 + 20 + 50) / 3);
         }
     }
 }
