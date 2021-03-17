@@ -12,13 +12,14 @@ mod v2 {
 
     #[ink(storage)]
     pub struct V2 {
-        sorted_values: vec::Vec<i32>,
+        values: vec::Vec<i32>,
+        proxy: AccountId,
     }
 
     impl V2 {
         #[ink(constructor)]
         pub fn default() -> Self {
-            Self { sorted_values: vec![] }
+            Self { values: vec![], proxy: AccountId::default() }
         }
 
         pub fn from_v1(address: AccountId) -> Self {
@@ -36,36 +37,36 @@ mod v2 {
 
         #[ink(message)]
         pub fn items(&self) -> u32 {
-            self.sorted_values.len() as u32
+            self.values.len() as u32
         }
 
         #[ink(message)]
         pub fn nth(&self, idx: u32) -> i32 {
-            self.sorted_values[idx as usize]
+            self.values[idx as usize]
         }
 
         #[ink(message)]
         pub fn insert(&mut self, value: i32) {
             let idx = self
-                .sorted_values
+                .values
                 .binary_search(&value)
                 .unwrap_or_else(|x| x);
 
-            self.sorted_values.insert(idx, value);
+            self.values.insert(idx, value);
         }
 
         #[ink(message)]
         pub fn average(&self) -> i32 {
-            if self.sorted_values.is_empty() {
+            if self.values.is_empty() {
                 return 0;
             }
 
-            let n = self.sorted_values.len();
+            let n = self.values.len();
 
             if n % 2 == 1 {
-                self.sorted_values[n / 2]
+                self.values[n / 2]
             } else {
-                (self.sorted_values[n / 2 - 1] + self.sorted_values[n / 2]) / 2
+                (self.values[n / 2 - 1] + self.values[n / 2]) / 2
             }
         }
     }
@@ -99,7 +100,7 @@ mod v2 {
             contract.insert(10);
             contract.insert(0);
 
-            assert!(contract.sorted_values.iter().is_sorted());
+            assert!(contract.values.iter().is_sorted());
         }
 
 

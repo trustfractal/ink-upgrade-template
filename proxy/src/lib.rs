@@ -35,4 +35,16 @@ mod proxy {
             self.backend.average()
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::proxy::Proxy;
+
+        #[test]
+        fn starts_out_empty() {
+            let contract = Proxy::default();
+
+            assert_eq!(contract.items(), 0);
+        }
+    }
 }
