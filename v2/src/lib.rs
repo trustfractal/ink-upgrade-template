@@ -28,22 +28,26 @@ mod v2 {
     impl V2 {
         // new constructs a new empty V2
         #[ink(constructor)]
-        pub fn new(proxy: AccountId, owner: AccountId) -> Self {
-            Self { values: vec![], proxy: proxy, owner: owner }
+        pub fn new(caller: AccountId) -> Self {
+            Self {
+                values: vec![],
+                owner: caller,
+                proxy: Self::env().caller(),
+            }
         }
 
         // upgrade_from constructs a new V2 contract based on the data of a given V1 contract
         #[ink(constructor)]
-        pub fn upgrade_from(proxy: AccountId, caller: AccountId, v1: AccountId) -> Self {
+        pub fn upgrade_from(v1: AccountId, _caller: AccountId) -> Self {
             use ink_env::call::FromAccountId;
+            let previous = V1::from_account_id(v1);
 
             let mut new = Self {
                 values: vec![],
-                proxy: proxy,
-                owner: caller,
+                owner: previous.owner(),
+                proxy: Self::env().caller(),
             };
 
-            let previous = V1::from_account_id(v1);
             for i in 0..previous.items() {
                 new.insert_internal(previous.nth(i));
             }
@@ -79,6 +83,11 @@ mod v2 {
         #[ink(message)]
         pub fn nth(&self, idx: u32) -> i32 {
             self.values[idx as usize]
+        }
+
+        #[ink(message)]
+        pub fn owner(&self) -> AccountId {
+            self.owner
         }
 
         // Contract messages

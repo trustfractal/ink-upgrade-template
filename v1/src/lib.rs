@@ -26,13 +26,17 @@ mod v1 {
     impl V1 {
         // new constructs a new empty V1
         #[ink(constructor)]
-        pub fn new(proxy: AccountId, owner: AccountId) -> Self {
-            Self { values: vec![], proxy: proxy, owner: owner }
+        pub fn new(caller: AccountId) -> Self {
+            Self {
+                values: vec![],
+                owner: caller,
+                proxy: Self::env().caller(),
+            }
         }
 
         // upgrade_from constructs a new V2 contract based on the data of a given V1 contract
         #[ink(constructor)]
-        pub fn upgrade_from(_proxy: AccountId, _caller: AccountId, _v1: AccountId) -> Self {
+        pub fn upgrade_from(_v1: AccountId, _caller: AccountId) -> Self {
             panic!("not implemented");
         }
 
@@ -64,6 +68,11 @@ mod v1 {
         #[ink(message)]
         pub fn nth(&self, idx: u32) -> i32 {
             self.values[idx as usize]
+        }
+
+        #[ink(message)]
+        pub fn owner(&self) -> AccountId {
+            self.owner
         }
 
         // Contract messages
