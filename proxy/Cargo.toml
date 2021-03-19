@@ -16,7 +16,6 @@ scale = { package = "parity-scale-codec", version = "2.0.1", default-features = 
 scale-info = { version = "0.6.0", default-features = false, features = ["derive"], optional = true }
 
 v1 = { version = "0.1.0", path = "../v1", default-features = false, features = ["ink-as-dependency"] }
-upgradeability = { version = "0.1.0", path = "..", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 name = "proxy"
@@ -37,6 +36,5 @@ std = [
     "scale/std",
     "scale-info/std",
     "v1/std",
-    "upgradeability/std",
 ]
 ink-as-dependency = []

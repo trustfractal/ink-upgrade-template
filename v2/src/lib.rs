@@ -10,30 +10,66 @@ mod v2 {
     use ink_prelude::*;
     use v1::V1;
 
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    pub enum Error {
+        NotCalledFromProxy,
+        UnauthorizedCaller,
+    }
+    pub type Result<T> = core::result::Result<T, Error>;
+
     #[ink(storage)]
     pub struct V2 {
         values: vec::Vec<i32>,
         proxy: AccountId,
+        owner: AccountId,
     }
 
     impl V2 {
+        // new constructs a new empty V2
         #[ink(constructor)]
-        pub fn default() -> Self {
-            Self { values: vec![], proxy: AccountId::default() }
+        pub fn new(proxy: AccountId, owner: AccountId) -> Self {
+            Self { values: vec![], proxy: proxy, owner: owner }
         }
 
-        pub fn from_v1(address: AccountId) -> Self {
+        // upgrade_from constructs a new V2 contract based on the data of a given V1 contract
+        #[ink(constructor)]
+        pub fn upgrade_from(proxy: AccountId, caller: AccountId, v1: AccountId) -> Self {
             use ink_env::call::FromAccountId;
 
-            let previous = V1::from_account_id(address);
+            let mut new = Self {
+                values: vec![],
+                proxy: proxy,
+                owner: caller,
+            };
 
-            let mut new = Self::default();
+            let previous = V1::from_account_id(v1);
             for i in 0..previous.items() {
-                new.insert(previous.nth(i));
+                new.insert_internal(previous.nth(i));
             }
 
             new
         }
+
+        // Helper authorization functions
+
+        fn enforce_proxy_call(&self) -> Result<()> {
+            if Self::env().caller() != self.proxy {
+                Err(Error::NotCalledFromProxy)
+            } else {
+                Ok(())
+            }
+        }
+
+        fn enforce_owner_call(&self, caller: AccountId) -> Result<()> {
+            if caller != self.owner {
+                Err(Error::UnauthorizedCaller)
+            } else {
+                Ok(())
+            }
+        }
+
+        // Functions to expose the internal state so that future versions can build their own data
 
         #[ink(message)]
         pub fn items(&self) -> u32 {
@@ -45,8 +81,26 @@ mod v2 {
             self.values[idx as usize]
         }
 
+        // Contract messages
+
         #[ink(message)]
-        pub fn insert(&mut self, value: i32) {
+        pub fn insert(&mut self, value: i32, caller: AccountId) -> Result<()> {
+            self.enforce_proxy_call()?;
+            self.enforce_owner_call(caller)?;
+
+            Ok(self.insert_internal(value))
+        }
+
+        #[ink(message)]
+        pub fn average(&self) -> Result<i32> {
+            self.enforce_proxy_call()?;
+
+            Ok(self.average_internal())
+        }
+
+        // Internal functions, extracted for ease of testing
+
+        pub fn insert_internal(&mut self, value: i32) {
             let idx = self
                 .values
                 .binary_search(&value)
@@ -55,15 +109,11 @@ mod v2 {
             self.values.insert(idx, value);
         }
 
-        #[ink(message)]
-        pub fn average(&self) -> i32 {
-            if self.values.is_empty() {
-                return 0;
-            }
-
+        pub fn average_internal(&self) -> i32 {
             let n = self.values.len();
-
-            if n % 2 == 1 {
+            if n == 0 {
+                0
+            } else if n % 2 == 1 {
                 self.values[n / 2]
             } else {
                 (self.values[n / 2 - 1] + self.values[n / 2]) / 2
@@ -73,20 +123,22 @@ mod v2 {
 
     #[cfg(test)]
     mod tests {
-        use crate::v2::V2;
+        use super::*;
+        use ink_lang as ink;
+        use ink_env::AccountId;
 
         #[test]
         fn starts_out_empty() {
-            let contract = V2::default();
+            let contract = V2::new(AccountId::default(), AccountId::default());
 
             assert_eq!(contract.items(), 0);
         }
 
         #[test]
         fn insert_registers_new_item() {
-            let mut contract = V2::default();
+            let mut contract = V2::new(AccountId::default(), AccountId::default());
 
-            contract.insert(10);
+            contract.insert_internal(10);
 
             assert_eq!(contract.items(), 1);
             assert_eq!(contract.nth(0), 10);
@@ -94,11 +146,11 @@ mod v2 {
 
         #[test]
         fn insert_keeps_things_sorted() {
-            let mut contract = V2::default();
+            let mut contract = V2::new(AccountId::default(), AccountId::default());
 
-            contract.insert(4);
-            contract.insert(10);
-            contract.insert(0);
+            contract.insert_internal(4);
+            contract.insert_internal(10);
+            contract.insert_internal(0);
 
             assert!(contract.values.iter().is_sorted());
         }
@@ -106,32 +158,32 @@ mod v2 {
 
         #[test]
         fn average_of_nothing_defaults_to_zero() {
-            let contract = V2::default();
+            let contract = V2::new(AccountId::default(), AccountId::default());
 
-            assert_eq!(contract.average(), 0);
+            assert_eq!(contract.average_internal(), 0);
         }
 
         #[test]
         fn average_is_middle_value_when_odd_items() {
-            let mut contract = V2::default();
+            let mut contract = V2::new(AccountId::default(), AccountId::default());
 
-            contract.insert(10);
-            contract.insert(50);
-            contract.insert(20);
+            contract.insert_internal(10);
+            contract.insert_internal(50);
+            contract.insert_internal(20);
 
-            assert_eq!(contract.average(), 20);
+            assert_eq!(contract.average_internal(), 20);
         }
 
         #[test]
         fn average_is_mean_of_middle_values_when_even_items() {
-            let mut contract = V2::default();
+            let mut contract = V2::new(AccountId::default(), AccountId::default());
 
-            contract.insert(50);
-            contract.insert(20);
-            contract.insert(10);
-            contract.insert(100);
+            contract.insert_internal(50);
+            contract.insert_internal(20);
+            contract.insert_internal(10);
+            contract.insert_internal(100);
 
-            assert_eq!(contract.average(), (20 + 50) / 2);
+            assert_eq!(contract.average_internal(), (20 + 50) / 2);
         }
     }
 }
