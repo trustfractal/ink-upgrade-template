@@ -72,6 +72,8 @@ being callable by anyone. In the first version, we'll be using the [arithmetic
 mean][mean]. Afterwards, we'll upgrade it to use the [median][median], with a
 slight change in storage to make it more efficient.
 
+### Implementing and deploying the first version
+
 The first step is to implement the contract as if there's no upgradeability:
 
 ~~~~rust
@@ -336,10 +338,134 @@ them. You start by deploying a dummy internal contract so that its code gets
 uploaded to the chain. Afterwards, you can deploy the proxy contract with the
 internal contract's code hash as its argument. Once the proxy contract is up
 and running, you can destroy / reclaim the dummy internal contract (see the
-Limitations section if this sounds weird).
+Limitations section for why this is necessary).
 
 
+### Upgrading a deployed contract
 
+After a while, you may decide to upgrade your contract. In our case, we want to
+start using the median instead of the arithmetic mean as the average.
+
+Instead of modifying the V1 source code, we create a new contract, V2. This
+allows us to have code that references both versions and reflects reality: both
+versions of the contract will exist in the blockchain simultaneously. We also
+need both implementations so that we can implement the data migration
+constructor, which references the older version.
+
+Computing the median requires sorting the values, and our first version didn't
+store them in any particular order. We could sort them every time someone calls
+the average method, but to improve the performance of this method, we'll be
+changing the storage to a sorted array instead. We'll need to sort the existing
+values during the migration, and any new value needs to be inserted in the
+right position. This will reduce the computation needed in `average`, but
+increase it in `insert`.
+
+In this case, the new contract's storage is the same as V1's storage, as are
+the guards in the `insert` and `average` methods:
+
+~~~~rust
+#[ink(storage)]
+pub struct V2 {
+    values: vec::Vec<i32>,
+    proxy: AccountId,
+    owner: AccountId,
+}
+
+#[ink(message)]
+pub fn insert(&mut self, value: i32, caller: AccountId) -> Result<()> {
+    self.enforce_proxy_call()?;
+    self.enforce_owner_call(caller)?;
+
+    Ok(self.insert_internal(value))
+}
+
+#[ink(message)]
+pub fn average(&self) -> Result<i32> {
+    self.enforce_proxy_call()?;
+
+    Ok(self.average_internal())
+}
+~~~~
+
+The actual implementation logic for those two methods is different, though:
+
+~~~~rust
+pub fn insert_internal(&mut self, value: i32) {
+    let idx = self
+        .values
+        .binary_search(&value)
+        .unwrap_or_else(|x| x);
+
+    self.values.insert(idx, value);
+}
+
+pub fn average_internal(&self) -> i32 {
+    let n = self.values.len();
+    if n == 0 {
+        0
+    } else if n % 2 == 1 {
+        self.values[n / 2]
+    } else {
+        (self.values[n / 2 - 1] + self.values[n / 2]) / 2
+    }
+}
+~~~~
+
+This version also needs the state exposing methods that we added in V1: `nth`,
+`items`, and `owner`. Since we didn't fundamentally changed the contract
+storage, these are the same, but we could have added or removed storage items.
+For example, if `insert` had became available to anyone and not only to the
+contract owner, we could have dropped its reference.
+
+The two other methods that need to be implemented are the constructors. The
+`upgrade_from` constructor receives a reference to the previous version and
+migrates all the data. In this case, we need to make sure that we store the
+values sorted. Instead of sorting directly, we can do this by calling
+`insert_internal`:
+
+~~~~rust
+#[ink(constructor)]
+pub fn upgrade_from(v1: AccountId, _caller: AccountId) -> Self {
+    use ink_env::call::FromAccountId;
+    let previous = V1::from_account_id(v1);
+
+    let mut new = Self {
+        values: vec![],
+        owner: previous.owner(),
+        proxy: Self::env().caller(),
+    };
+
+    for i in 0..previous.items() {
+        new.insert_internal(previous.nth(i));
+    }
+
+    new
+}
+~~~~
+
+The `new` constructor doesn't deal with any data migrations, so in our case
+it's the same as V1's constructor:
+
+~~~~rust
+#[ink(constructor)]
+pub fn new(caller: AccountId) -> Self {
+    Self {
+        values: vec![],
+        owner: caller,
+        proxy: Self::env().caller(),
+    }
+}
+~~~~
+
+With the second version of the internal contract implemented, we can upgrade
+our deployed contract. Just like in the first time, we start by deploying a
+dummy version of V2, to upload its code to the chain. Once we have the code
+hash, we call `upgrade` on the proxy contract. It will deploy a new V2 instance
+using the `upgrade_from` constructor and update its internal reference all in
+the same transaction to avoid race conditions.
+
+With the new version deployed and running, you can destroy / reclaim the
+previous version of the internal contract.
 
 
 ## Ink features that would improve this proposal
