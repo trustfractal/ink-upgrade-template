@@ -31,7 +31,10 @@ mod proxy {
                 .instantiate()
                 .expect("failed at instantiating the internal contract");
 
-            Self { backend: backend, owner: Self::env().caller() }
+            Self {
+                backend: backend,
+                owner: Self::env().caller(),
+            }
         }
 
         #[ink(message, payable)]

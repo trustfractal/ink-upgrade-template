@@ -1,8 +1,9 @@
 [package]
 name = "v2"
 version = "0.1.0"
-authors = ["Hugo Peixoto <hugo.peixoto@gmail.com>"]
+authors = ["Fractal Protocol <julio@fractal.id>", "Hugo Peixoto <hugo.peixoto@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
 
 [dependencies]
 ink_primitives = { version = "3.0.0-rc3", default-features = false }

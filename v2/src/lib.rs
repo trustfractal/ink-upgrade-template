@@ -4,7 +4,6 @@
 pub use self::v2::V2;
 use ink_lang as ink;
 
-
 #[ink::contract]
 mod v2 {
     use ink_prelude::*;
@@ -110,10 +109,7 @@ mod v2 {
         // Internal functions, extracted for ease of testing
 
         pub fn insert_internal(&mut self, value: i32) {
-            let idx = self
-                .values
-                .binary_search(&value)
-                .unwrap_or_else(|x| x);
+            let idx = self.values.binary_search(&value).unwrap_or_else(|x| x);
 
             self.values.insert(idx, value);
         }
@@ -133,8 +129,8 @@ mod v2 {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use ink_lang as ink;
         use ink_env::AccountId;
+        use ink_lang as ink;
 
         #[test]
         fn starts_out_empty() {
@@ -163,7 +159,6 @@ mod v2 {
 
             assert!(contract.values.iter().is_sorted());
         }
-
 
         #[test]
         fn average_of_nothing_defaults_to_zero() {

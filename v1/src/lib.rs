@@ -3,7 +3,6 @@
 pub use self::v1::V1;
 use ink_lang as ink;
 
-
 #[ink::contract]
 mod v1 {
     use ink_prelude::*;
@@ -110,8 +109,8 @@ mod v1 {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use ink_lang as ink;
         use ink_env::AccountId;
+        use ink_lang as ink;
 
         #[ink::test]
         fn starts_out_empty() {
@@ -150,9 +149,8 @@ mod v1 {
 
         #[ink::test]
         fn insert_only_called_from_proxy() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
-                    .expect("Cannot get accounts");
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
+                .expect("Cannot get accounts");
 
             let proxy = accounts.alice;
             let owner = accounts.bob;
@@ -160,16 +158,25 @@ mod v1 {
 
             let mut contract = V1::new(proxy, owner);
 
-            call_as(proxy, || { contract.insert(10, owner).expect("can't call from proxy"); });
-            call_as(owner, || { contract.insert(10, owner).expect_err("can't call from owner"); });
-            call_as(other, || { contract.insert(10, owner).expect_err("can't call from random"); });
+            call_as(proxy, || {
+                contract.insert(10, owner).expect("can't call from proxy");
+            });
+            call_as(owner, || {
+                contract
+                    .insert(10, owner)
+                    .expect_err("can't call from owner");
+            });
+            call_as(other, || {
+                contract
+                    .insert(10, owner)
+                    .expect_err("can't call from random");
+            });
         }
 
         #[ink::test]
         fn average_only_called_from_proxy() {
-            let accounts =
-                ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
-                    .expect("Cannot get accounts");
+            let accounts = ink_env::test::default_accounts::<ink_env::DefaultEnvironment>()
+                .expect("Cannot get accounts");
 
             let proxy = accounts.alice;
             let owner = accounts.bob;
@@ -177,12 +184,21 @@ mod v1 {
 
             let contract = V1::new(proxy, owner);
 
-            call_as(proxy, || { contract.average(owner).expect("can't call from proxy"); });
-            call_as(owner, || { contract.average(owner).expect_err("can't call from owner"); });
-            call_as(other, || { contract.average(owner).expect_err("can't call from random"); });
+            call_as(proxy, || {
+                contract.average(owner).expect("can't call from proxy");
+            });
+            call_as(owner, || {
+                contract.average(owner).expect_err("can't call from owner");
+            });
+            call_as(other, || {
+                contract.average(owner).expect_err("can't call from random");
+            });
         }
 
-        fn call_as<F>(account: AccountId, mut body: F) where F: FnMut() -> () {
+        fn call_as<F>(account: AccountId, mut body: F)
+        where
+            F: FnMut() -> (),
+        {
             ink_env::test::push_execution_context::<ink_env::DefaultEnvironment>(
                 account,
                 ink_env::account_id::<ink_env::DefaultEnvironment>().unwrap(),
