@@ -34,7 +34,7 @@ mod proxy {
             Self { backend: backend, owner: Self::env().caller() }
         }
 
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn upgrade(&mut self, code_hash: Hash) -> Result<()> {
             use ink_lang::ToAccountId;
 

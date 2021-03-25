@@ -231,7 +231,7 @@ mod proxy {
           // ...
         }
 
-        #[ink(message)]
+        #[ink(message, payable)]
         pub fn upgrade(&mut self, code_hash: Hash) -> Result<()> {
           // ...
         }
@@ -286,7 +286,7 @@ pub fn new(code_hash: Hash) -> Self {
     Self { backend: backend }
 }
 
-#[ink(message)]
+#[ink(message, payable)]
 pub fn upgrade(&mut self, code_hash: Hash) -> Result<()> {
     use ink_lang::ToAccountId;
 
@@ -318,7 +318,7 @@ pub fn new(code_hash: Hash) -> Self {
     Self { backend: backend, owner: Self::env().caller() }
 }
 
-#[ink(message)]
+#[ink(message, payable)]
 pub fn upgrade(&mut self, code_hash: Hash) -> Result<()> {
     use ink_lang::ToAccountId;
 
@@ -339,6 +339,12 @@ uploaded to the chain. Afterwards, you can deploy the proxy contract with the
 internal contract's code hash as its argument. Once the proxy contract is up
 and running, you can destroy / reclaim the dummy internal contract (see the
 Limitations section for why this is necessary).
+
+Note that the `upgrade` method is marked as payable. When you instantiate a
+contract, you need to give it some funds to pay for its storage rent. Having
+`upgrade` marked as payable allows you to top up the proxy contract before
+instantiating a new internal contract. You may also need to top up the balance
+of both the proxy and the internal contracts from time to time.
 
 
 ### Upgrading a deployed contract
