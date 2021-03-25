@@ -476,7 +476,22 @@ With the new version deployed and running, you can destroy / reclaim the
 previous version of the internal contract.
 
 
-## ink! features that would improve this proposal
+## Building this template
+
+To build the contracts in this repository, you need to setup your ink!
+development environment. We suggest following the [ink! Smart Contracts
+Tutorial](https://substrate.dev/substrate-contracts-workshop/#/0/introduction).
+
+`cargo-contract` doesn't support building multiple contracts in a workspace, so
+every contract needs to be built separately. To make things easier, there's a
+`Makefile` available that runs `cargo contract build` for each of the three
+contracts.
+
+To run the tests for each contract, you need to `cd` into each directory and
+run `cargo test`.
+
+
+## Ink features that would improve this proposal
 
 The proxy contract's code references the internal contract's type directly.
 This doesn't affect functionality, but it feels a bit weird. Ideally we'd use a
