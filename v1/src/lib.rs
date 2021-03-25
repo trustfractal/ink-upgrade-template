@@ -114,14 +114,14 @@ mod v1 {
 
         #[ink::test]
         fn starts_out_empty() {
-            let contract = V1::new(AccountId::default(), AccountId::default());
+            let contract = V1::new(AccountId::default());
 
             assert_eq!(contract.items(), 0);
         }
 
-        #[test]
+        #[ink::test]
         fn insert_registers_new_item() {
-            let mut contract = V1::new(AccountId::default(), AccountId::default());
+            let mut contract = V1::new(AccountId::default());
 
             contract.insert_internal(10);
 
@@ -129,16 +129,16 @@ mod v1 {
             assert_eq!(contract.nth(0), 10);
         }
 
-        #[test]
+        #[ink::test]
         fn average_of_nothing_defaults_to_zero() {
-            let contract = V1::new(AccountId::default(), AccountId::default());
+            let contract = V1::new(AccountId::default());
 
             assert_eq!(contract.average_internal(), 0);
         }
 
-        #[test]
+        #[ink::test]
         fn average_is_middle_value_when_odd_items() {
-            let mut contract = V1::new(AccountId::default(), AccountId::default());
+            let mut contract = V1::new(AccountId::default());
 
             contract.insert_internal(10);
             contract.insert_internal(50);
@@ -156,7 +156,7 @@ mod v1 {
             let owner = accounts.bob;
             let other = accounts.eve;
 
-            let mut contract = V1::new(proxy, owner);
+            let mut contract = V1::new(owner);
 
             call_as(proxy, || {
                 contract.insert(10, owner).expect("can't call from proxy");
@@ -182,7 +182,7 @@ mod v1 {
             let owner = accounts.bob;
             let other = accounts.eve;
 
-            let contract = V1::new(proxy, owner);
+            let contract = V1::new(owner);
 
             call_as(proxy, || {
                 contract.average(owner).expect("can't call from proxy");

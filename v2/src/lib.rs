@@ -132,16 +132,16 @@ mod v2 {
         use ink_env::AccountId;
         use ink_lang as ink;
 
-        #[test]
+        #[ink::test]
         fn starts_out_empty() {
-            let contract = V2::new(AccountId::default(), AccountId::default());
+            let contract = V2::new(AccountId::default());
 
             assert_eq!(contract.items(), 0);
         }
 
-        #[test]
+        #[ink::test]
         fn insert_registers_new_item() {
-            let mut contract = V2::new(AccountId::default(), AccountId::default());
+            let mut contract = V2::new(AccountId::default());
 
             contract.insert_internal(10);
 
@@ -149,9 +149,9 @@ mod v2 {
             assert_eq!(contract.nth(0), 10);
         }
 
-        #[test]
+        #[ink::test]
         fn insert_keeps_things_sorted() {
-            let mut contract = V2::new(AccountId::default(), AccountId::default());
+            let mut contract = V2::new(AccountId::default());
 
             contract.insert_internal(4);
             contract.insert_internal(10);
@@ -160,16 +160,16 @@ mod v2 {
             assert!(contract.values.iter().is_sorted());
         }
 
-        #[test]
+        #[ink::test]
         fn average_of_nothing_defaults_to_zero() {
-            let contract = V2::new(AccountId::default(), AccountId::default());
+            let contract = V2::new(AccountId::default());
 
             assert_eq!(contract.average_internal(), 0);
         }
 
-        #[test]
+        #[ink::test]
         fn average_is_middle_value_when_odd_items() {
-            let mut contract = V2::new(AccountId::default(), AccountId::default());
+            let mut contract = V2::new(AccountId::default());
 
             contract.insert_internal(10);
             contract.insert_internal(50);
@@ -178,9 +178,9 @@ mod v2 {
             assert_eq!(contract.average_internal(), 20);
         }
 
-        #[test]
+        #[ink::test]
         fn average_is_mean_of_middle_values_when_even_items() {
-            let mut contract = V2::new(AccountId::default(), AccountId::default());
+            let mut contract = V2::new(AccountId::default());
 
             contract.insert_internal(50);
             contract.insert_internal(20);
