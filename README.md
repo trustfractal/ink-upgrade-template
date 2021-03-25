@@ -1,16 +1,17 @@
-## Upgradeability in ink contracts
+## Upgradeability in ink! contracts
 
-This document describes a way to add upgradeability to your smart contracts.
+This document describes a method to make your ink! contracts upgradeable.
 
 There are several limitations to this approach, described below. You should
 read and understand them before applying this approach to your contracts.
 
-The mechanism used here is based on the [Proxy pattern][proxy-pattern] used in
-ethereum. It works by having two contracts: the proxy contract, which is the
-one that other accounts will interact with, and the internal contract, which
-contains most of the smart contract logic. You upgrade your contract by
-switching the internal contract referenced by the proxy, making the upgrade
-process transparent for the end users of your contract.
+The mechanism used here is based on the [Proxy
+pattern](https://blog.openzeppelin.com/proxy-patterns/) used in Ethereum. It
+works by having two contracts: the proxy contract, which is the one that other
+accounts will interact with, and the internal contract, which contains most of
+the smart contract logic. You upgrade your contract by switching the internal
+contract referenced by the proxy, making the upgrade process transparent for
+the end users of your contract.
 
 
 ## Limitations
@@ -62,7 +63,7 @@ deploy a dummy version of the internal contract you intend to use just to get
 the code hash. If your internal contract constructor has any side effects, this
 may cause some problems.
 
-## How to
+## Tutorial
 
 In this section we'll go through the process of adding upgradeability to a
 sample contract. The contract will have two methods: one to insert an `i32`
@@ -111,9 +112,9 @@ mod v1 {
 }
 ~~~~
 
-Next, we change the methods signatures to receive and explicit caller,
-including the constructor. This is necessary because the actual caller will be
-the proxy. This is kind of similar to how you use the
+Next, we change the method signatures, including the constructor's, to receive
+an explicit caller. This is necessary because the actual caller will be the
+proxy. This is kind of similar to how you use the
 [`X-Forwarded-For`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For)
 header in HTTP reverse proxies to pass the IP of the client to the backend.
 Here's an example of the `insert` method being changed:
@@ -178,7 +179,7 @@ Now that the contract messages can't be accidentally called without going
 through the proxy, we need to add some methods to expose the contract internal
 state. These will be used by the constructor of a potential new version, if we
 ever decide to upgrade it. We don't need to expose the `proxy` storage entry, but
-we need to expose `values` and `owner`:
+we need to expose `items`, `nth`, and `owner`:
 
 ~~~~rust
 #[ink(message)]
@@ -200,7 +201,7 @@ pub fn owner(&self) -> AccountId {
 The last step of the contract modification is to add a new constructor. This
 constructor would be used to bootstrap this contract from a previous version.
 The first version won't ever call this constructor, but we need to have it to
-work around ink type limitations:
+work around ink! type limitations:
 
 ~~~~rust
 #[ink(constructor)]
@@ -418,8 +419,8 @@ pub fn average_internal(&self) -> i32 {
 }
 ~~~~
 
-This version also needs the state exposing methods that we added in V1: `nth`,
-`items`, and `owner`. Since we didn't fundamentally changed the contract
+This version also needs the state exposing methods that we added in V1:
+`items`, `nth`, and `owner`. Since we didn't fundamentally change the contract
 storage, these are the same, but we could have added or removed storage items.
 For example, if `insert` had became available to anyone and not only to the
 contract owner, we could have dropped its reference.
@@ -475,10 +476,10 @@ With the new version deployed and running, you can destroy / reclaim the
 previous version of the internal contract.
 
 
-## Ink features that would improve this proposal
+## ink! features that would improve this proposal
 
 The proxy contract's code references the internal contract's type directly.
 This doesn't affect functionality, but it feels a bit weird. Ideally we'd use a
-trait here, since it can be any contract, but ink doesn't support [dynamic
+trait here, since it can be any contract, but ink! doesn't support [dynamic
 trait based contract calling](https://github.com/paritytech/ink/issues/631).
 Once that feature is added, this approach can be improved.
