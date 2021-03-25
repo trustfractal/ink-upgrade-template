@@ -69,8 +69,9 @@ sample contract. The contract will have two methods: one to insert an `i32`
 value, and another one to calculate the average of the inserted values. Only
 the owner of the contract should be able to insert new values, with `average`
 being callable by anyone. In the first version, we'll be using the [arithmetic
-mean][mean]. Afterwards, we'll upgrade it to use the [median][median], with a
-slight change in storage to make it more efficient.
+mean](https://en.wikipedia.org/wiki/Arithmetic_mean). Afterwards, we'll upgrade
+it to use the [median](https://en.wikipedia.org/wiki/Median), with a slight
+change in storage to make it more efficient.
 
 ### Implementing and deploying the first version
 
@@ -113,9 +114,9 @@ mod v1 {
 Next, we change the methods signatures to receive and explicit caller,
 including the constructor. This is necessary because the actual caller will be
 the proxy. This is kind of similar to how you use the
-[`X-Forwarded-For`][xforwardedfor] header in HTTP reverse proxies to pass the
-IP of the client to the backend. Here's an example of the `insert` method being
-changed:
+[`X-Forwarded-For`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For)
+header in HTTP reverse proxies to pass the IP of the client to the backend.
+Here's an example of the `insert` method being changed:
 
 ~~~~rust
 // original method
@@ -479,11 +480,5 @@ previous version of the internal contract.
 The proxy contract's code references the internal contract's type directly.
 This doesn't affect functionality, but it feels a bit weird. Ideally we'd use a
 trait here, since it can be any contract, but ink doesn't support [dynamic
-trait based contract calling](dyncall). Once that feature is added, this
-approach can be improved.
-
-
-[mean]: https://en.wikipedia.org/wiki/Arithmetic_mean
-[median]: https://en.wikipedia.org/wiki/Median
-[xforwardedfor]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
-[dyncall]: https://github.com/paritytech/ink/issues/631
+trait based contract calling](https://github.com/paritytech/ink/issues/631).
+Once that feature is added, this approach can be improved.
