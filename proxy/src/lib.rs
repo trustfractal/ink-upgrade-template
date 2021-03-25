@@ -42,10 +42,7 @@ mod proxy {
                 return Err(Error::UnauthorizedCaller);
             }
 
-            self.backend = V1::upgrade_from(
-                    self.backend.to_account_id(),
-                    Self::env().caller(),
-                )
+            self.backend = V1::upgrade_from(self.backend.to_account_id(), Self::env().caller())
                 .endowment(Self::env().balance() / 2)
                 .code_hash(code_hash)
                 .salt_bytes(1i32.to_le_bytes())
