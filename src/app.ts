@@ -13,16 +13,20 @@ import { blake2AsU8a, blake2AsHex } from "@polkadot/util-crypto";
 // import v1_abi from '../target/ink/v1/metadata.json';
 // import v2_abi from '../target/ink/v2/metadata.json';
 const ALICE = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+const DUMMY_ADDRESS = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
+const SALT = "123";
 
-// Deploy a contract using the Blueprint
+// The addresses of deployed contracts are fixed, as long as the salt stays fixed
+// const V1_ADDRESS = "5FEytjcx9nQYEiCJzFGZxrWjFNycV3CWbMQvDVMC1BdcL52S";
+const PROXY_ADDRESS = "5CE1yuZx64tfiKgAeFhK6MePWfX3Q2nLG6ydbZSSVGFH85ud";
+
 const endowment = 1230000000000000n;
-
-// NOTE The apps UI specifies these in Mgas
 const gasLimit = 100000n * 1000000n;
 
 async function deployContract(
   api: any,
   keyPair: any,
+  nonce: number,
   name: String,
   params: any
 ) {
@@ -30,7 +34,7 @@ async function deployContract(
   const abi = JSON.parse(fs.readFileSync(`target/ink/${name}/metadata.json`));
   const code = new CodePromise(api, abi, wasm);
 
-  const contractAddress = await api.tx.contracts
+  await api.tx.contracts
     .instantiateWithCode(
       endowment,
       gasLimit,
@@ -38,10 +42,7 @@ async function deployContract(
       params,
       "123"
     )
-    .signAndSend(keyPair);
-
-  console.log(`Raw result is ${contractAddress}`);
-  console.log(`Decoded address is ${encodeAddress(contractAddress)}`);
+    .signAndSend(keyPair, { nonce: nonce });
 
   return [blake2AsHex(code.code), abi];
 }
@@ -58,27 +59,76 @@ async function main() {
 
   const keyring = new Keyring({ type: "sr25519" });
   const alicePair = keyring.addFromUri("//Alice");
+  // const bobPair = keyring.addFromUri("//Bob");
 
-  // Retrieve the chain & node information information via rpc calls
-  const [chain, nodeName, nodeVersion] = await Promise.all([
-    api.rpc.system.chain(),
-    api.rpc.system.name(),
-    api.rpc.system.version(),
-  ]);
-
-  const [v1CodeHash, abi] = await deployContract(api, alicePair, "v1", ALICE);
-  console.log(`V1 code hash is ${v1CodeHash}`);
-
-  //   const contractPromise = new ContractPromise(api,
-  // abi, decodeAddress(DELEGATOR_CONTRACT_ADDRESS));
-  // }
-  //   contracts.forEach(async (element) => {
-  // deployContract(api, alicePair, element, "123");
-  //   });
-
-  console.log(
-    `You are connected to chain ${chain} using ${nodeName} v${nodeVersion}`
+  // Need to deploy a dummy contract first
+  let nonce = 0;
+  const [v1CodeHash, v1Abi] = await deployContract(
+    api,
+    alicePair,
+    nonce,
+    "v1",
+    DUMMY_ADDRESS
   );
+  console.log(`Deployed a V1 contract with hash ${v1CodeHash}`);
+
+  nonce += 1;
+  const [proxyCodeHash, proxyAbi] = await deployContract(
+    api,
+    alicePair,
+    nonce,
+    "proxy",
+    v1CodeHash
+  );
+
+  console.log(`Deployed a proxy contract with hash ${proxyCodeHash}`);
+  const proxyContract = new ContractPromise(api, proxyAbi, PROXY_ADDRESS);
+
+  // insert some values
+  nonce += 1;
+  await proxyContract.tx
+    .insert({ value: 0, gasLimit: gasLimit }, 3)
+    .signAndSend(alicePair, { nonce: nonce });
+
+  nonce += 1;
+  await proxyContract.tx
+    .insert({ value: 0, gasLimit: gasLimit }, 7)
+    .signAndSend(alicePair, { nonce: nonce });
+
+  nonce += 1;
+  await proxyContract.tx
+    .insert({ value: 0, gasLimit: gasLimit }, 8)
+    .signAndSend(alicePair, { nonce: nonce });
+
+  // Average should be the mean
+  // const average = await proxyContract.query.average(ALICE, {
+  //   value: 0,
+  //   gasLimit: gasLimit,
+  // });
+  // assert(average == 6);
+
+  nonce += 1;
+  const [v2CodeHash, v2Abi] = await deployContract(
+    api,
+    alicePair,
+    nonce,
+    "v2",
+    PROXY_ADDRESS
+  );
+  console.log(`Deployed a V2 contract with hash ${v2CodeHash}`);
+
+  nonce += 1;
+  await proxyContract.tx
+    .upgrade({ value: 0, gasLimit: gasLimit }, v2CodeHash)
+    .signAndSend(alicePair, { nonce: nonce });
+
+  console.log(`Upgraded the inner contract to V2`);
+  // Average should be a median now!
+  // const average = await proxyContract.query.average(ALICE, {
+  //   value: 0,
+  //   gasLimit: gasLimit,
+  // });
+  // assert(average == 7);
 }
 
 main()
