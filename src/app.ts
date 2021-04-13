@@ -1,50 +1,62 @@
-import { ContractPromise } from "@polkadot/api-contract";
-import { assert } from "node:console";
-
 // Required imports
 const { ApiPromise, WsProvider } = require("@polkadot/api");
-const { CodePromise, BlueprintPromise } = require("@polkadot/api-contract");
+const { ContractPromise, CodePromise } = require("@polkadot/api-contract");
 const fs = require("fs");
-const { Keyring, decodeAddress, encodeAddress } = require("@polkadot/keyring");
-import { compactAddLength } from "@polkadot/util";
+const { Keyring } = require("@polkadot/keyring");
 import { blake2AsU8a, blake2AsHex } from "@polkadot/util-crypto";
 
-// import proxy_abi from '../target/ink/proxy/metadata.json';
-// import v1_abi from '../target/ink/v1/metadata.json';
-// import v2_abi from '../target/ink/v2/metadata.json';
-const ALICE = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
-const DUMMY_ADDRESS = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-const SALT = "123";
-
-// The addresses of deployed contracts are fixed, as long as the salt stays fixed
-// const V1_ADDRESS = "5FEytjcx9nQYEiCJzFGZxrWjFNycV3CWbMQvDVMC1BdcL52S";
-const PROXY_ADDRESS = "5CE1yuZx64tfiKgAeFhK6MePWfX3Q2nLG6ydbZSSVGFH85ud";
-
-const endowment = 1230000000000000n;
-const gasLimit = 100000n * 1000000n;
+const endowment = 4000n * 1000000n * 1000000n;
+const gasLimit = 200000n * 1000000n;
 
 async function deployContract(
   api: any,
   keyPair: any,
-  nonce: number,
   name: String,
-  params: any
-) {
+  params: any[],
+): Promise<any> {
   const wasm = fs.readFileSync(`target/ink/${name}/${name}.wasm`);
   const abi = JSON.parse(fs.readFileSync(`target/ink/${name}/metadata.json`));
   const code = new CodePromise(api, abi, wasm);
 
-  await api.tx.contracts
-    .instantiateWithCode(
-      endowment,
-      gasLimit,
-      compactAddLength(code.code),
-      params,
-      "123"
-    )
-    .signAndSend(keyPair, { nonce: nonce });
+  const tx = code.tx.new({ gasLimit, value: endowment }, ...params);
 
-  return [blake2AsHex(code.code), abi];
+  const contract = await waitForTx(api, keyPair, tx);
+
+  return { abi, contract };
+}
+
+async function waitForTx(api: any, keyPair: any, tx: any) {
+  return new Promise(async (resolve, reject) => {
+    const { ExtrinsicFailed, ExtrinsicSuccess } = api.events.system;
+    const { Instantiated } = api.events.contracts;
+
+    const unsub = await tx.signAndSend(keyPair, (e: any) => {
+      for (const { event } of Object.values(e.events) as any) {
+        if (Instantiated.is(event)) {
+          let { data: [deployer, address] } = event;
+          resolve(e.contract);
+        }
+
+        if (ExtrinsicFailed.is(event)) {
+          const error = event.data[0];
+          if (error.isModule) {
+            // for module errors, we have the section indexed, lookup
+            const decoded = api.registry.findMetaError(error.asModule);
+            const { documentation, method, section } = decoded;
+            reject(`${section}.${method}: ${documentation.join(" ")}`);
+          } else {
+            reject(error.toString());
+          }
+        }
+
+        if (ExtrinsicSuccess.is(event)) {
+          resolve(event);
+        }
+      }
+
+      if (e.status.isInBlock || e.status.isFinalized) resolve(null);
+    });
+  });
 }
 
 async function main() {
@@ -58,79 +70,42 @@ async function main() {
   });
 
   const keyring = new Keyring({ type: "sr25519" });
-  const alicePair = keyring.addFromUri("//Alice");
-  // const bobPair = keyring.addFromUri("//Bob");
+  const alice = keyring.addFromUri("//Alice");
+  const bob = keyring.addFromUri("//Bob");
 
   // Need to deploy a dummy contract first
-  let nonce = 0;
-  const [v1CodeHash, v1Abi] = await deployContract(
-    api,
-    alicePair,
-    nonce,
-    "v1",
-    DUMMY_ADDRESS
-  );
-  console.log(`Deployed a V1 contract with hash ${v1CodeHash}`);
+  const v1 = await deployContract(api, alice, "v1", [alice.address]);
+  console.log("Deployed V1 contract:");
+  console.log(`  hash: ${v1.abi.source.hash}`);
+  console.log(`  address ${v1.contract.address}`);
 
-  nonce += 1;
-  const [proxyCodeHash, proxyAbi] = await deployContract(
-    api,
-    alicePair,
-    nonce,
-    "proxy",
-    v1CodeHash
-  );
+  const v2 = await deployContract(api, alice, "v2", [alice.address]);
+  console.log("Deployed V2 contract:");
+  console.log(`  hash: ${v2.abi.source.hash}`);
+  console.log(`  address ${v2.contract.address}`);
 
-  console.log(`Deployed a proxy contract with hash ${proxyCodeHash}`);
-  const proxyContract = new ContractPromise(api, proxyAbi, PROXY_ADDRESS);
+  const proxy = await deployContract(api, alice, "proxy", [v1.abi.source.hash]);
+  console.log("Deployed proxy contract:");
+  console.log(`  hash: ${proxy.abi.source.hash}`);
+  console.log(`  address ${proxy.contract.address}`);
 
   // insert some values
-  nonce += 1;
-  await proxyContract.tx
-    .insert({ value: 0, gasLimit: gasLimit }, 3)
-    .signAndSend(alicePair, { nonce: nonce });
-
-  nonce += 1;
-  await proxyContract.tx
-    .insert({ value: 0, gasLimit: gasLimit }, 7)
-    .signAndSend(alicePair, { nonce: nonce });
-
-  nonce += 1;
-  await proxyContract.tx
-    .insert({ value: 0, gasLimit: gasLimit }, 8)
-    .signAndSend(alicePair, { nonce: nonce });
+  await waitForTx(api, alice, proxy.contract.tx.insert({ value: 0, gasLimit }, 3));
+  await waitForTx(api, alice, proxy.contract.tx.insert({ value: 0, gasLimit }, 7));
+  await waitForTx(api, alice, proxy.contract.tx.insert({ value: 0, gasLimit }, 8));
 
   // Average should be the mean
-  // const average = await proxyContract.query.average(ALICE, {
-  //   value: 0,
-  //   gasLimit: gasLimit,
-  // });
-  // assert(average == 6);
+  const avgV1 = await proxy.contract.query.average(alice.address, { gasLimit });
+  console.log("avg-v1:", avgV1.output.toString());
+  console.assert(avgV1.output.toString() === "6");
 
-  nonce += 1;
-  const [v2CodeHash, v2Abi] = await deployContract(
-    api,
-    alicePair,
-    nonce,
-    "v2",
-    PROXY_ADDRESS
-  );
-  console.log(`Deployed a V2 contract with hash ${v2CodeHash}`);
-
-  nonce += 1;
-  await proxyContract.tx
-    .upgrade({ value: 0, gasLimit: gasLimit }, v2CodeHash)
-    .signAndSend(alicePair, { nonce: nonce });
-
+  await waitForTx(api, alice, proxy.contract.tx.upgrade({ value: 0, gasLimit }, v2.abi.source.hash));
   console.log(`Upgraded the inner contract to V2`);
+
   // Average should be a median now!
-  // const average = await proxyContract.query.average(ALICE, {
-  //   value: 0,
-  //   gasLimit: gasLimit,
-  // });
-  // assert(average == 7);
+  const avgV2 = await proxy.contract.query.average(alice.address, { gasLimit });
+  console.log("avg-v2:", avgV2.output.toString());
+  console.assert(avgV2.output.toString() === "7");
 }
 
-main()
-  .catch(console.error)
-  .finally(() => process.exit());
+main().catch(console.error).finally(() => process.exit());
