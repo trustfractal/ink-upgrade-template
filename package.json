@@ -7,7 +7,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "tsc",
-    "start": "node ./bin/app.js",
+    "start": "node ./bin/src/app.js",
     "dev": "ts-node ./src/app.ts --verbose"
   },
   "dependencies": {
