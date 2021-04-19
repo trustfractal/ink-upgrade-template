@@ -490,6 +490,9 @@ contracts.
 To run the tests for each contract, you need to `cd` into each directory and
 run `cargo test`.
 
+### Integration test
+
+You can also follow the entire flow of deploying V1, V2 & the proxy contract, as well as making calls to the proxy, by checking the included [ts app](src/app.ts). To test it, simply run `make all`. (You need to have a local smart-contract-compatible node running, e.g. [canvas](https://github.com/paritytech/canvas-node))
 
 ## Ink features that would improve this proposal
 
